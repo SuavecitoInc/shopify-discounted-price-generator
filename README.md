@@ -174,10 +174,10 @@ Discounts payload generated successfully to output/discounts.json.
 Example Output:
 
 ```json
-[
-  { "sku": "C002BN", "discountedPrice": 5.59, "code": "COLLECTIBLES_30_OFF" },
-  { "sku": "M029NN", "discountedPrice": 3.49, "code": "COLLECTIBLES_30_OFF" },
-  { "sku": "P001NN", "discountedPrice": 11.99, "code": "ALL_20_OFF" },
-  { "sku": "P009NN", "discountedPrice": 32.79, "code": "ALL_20_OFF" }
-]
+{
+  "C002BN": { "discountedPrice": 5.59, "code": "COLLECTIBLES_30_OFF" },
+  "M029NN": { "discountedPrice": 3.49, "code": "COLLECTIBLES_30_OFF" },
+  "P001NN": { "discountedPrice": 11.99, "code": "ALL_20_OFF" },
+  "P009NN": { "discountedPrice": 32.79, "code": "ALL_20_OFF" }
+}
 ```

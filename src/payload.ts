@@ -3,14 +3,16 @@ import fs from 'fs';
 
 import type { DiscountedProductVariant } from './lib/types';
 
-type Discounted = { sku: string; discountedPrice: number; code: string };
+type SKU = string;
+
+type Discounted = { [key: SKU]: { discountedPrice: number; code: string } };
 
 const files = [
   'output/collection-discounts.json',
   'output/product-discounts.json',
 ];
 
-const discountedVariants: Discounted[] = [];
+const discountedVariants: Discounted = {};
 
 function run() {
   files.forEach((file) => {
@@ -21,7 +23,7 @@ function run() {
 
       jsonData.forEach((item: DiscountedProductVariant) => {
         const { sku, discountedPrice, code } = item;
-        discountedVariants.push({ sku, discountedPrice, code });
+        discountedVariants[sku] = { discountedPrice, code };
       });
     } catch (error) {
       console.error(`Error reading ${file}:`, error);
