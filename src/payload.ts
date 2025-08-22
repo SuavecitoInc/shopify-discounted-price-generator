@@ -3,12 +3,14 @@ import fs from 'fs';
 
 import type { DiscountedProductVariant } from './lib/types';
 
+type Discounted = { sku: string; discountedPrice: number; code: string };
+
 const files = [
   'output/collection-discounts.json',
   'output/product-discounts.json',
 ];
 
-const discountObject = {};
+const discountedVariants: Discounted[] = [];
 
 function run() {
   files.forEach((file) => {
@@ -18,14 +20,8 @@ function run() {
       const jsonData = JSON.parse(data);
 
       jsonData.forEach((item: DiscountedProductVariant) => {
-        const key = item.code;
-        if (!discountObject[key]) {
-          discountObject[key] = [];
-        }
-        discountObject[key].push({
-          sku: item.sku,
-          discountedPrice: item.discountedPrice,
-        });
+        const { sku, discountedPrice, code } = item;
+        discountedVariants.push({ sku, discountedPrice, code });
       });
     } catch (error) {
       console.error(`Error reading ${file}:`, error);
@@ -35,7 +31,7 @@ function run() {
   // write discount object to new file
   fs.writeFileSync(
     path.join(__dirname, '../output/discounts.json'),
-    JSON.stringify(discountObject, null, 2),
+    JSON.stringify(discountedVariants, null, 2),
   );
 
   console.log(
