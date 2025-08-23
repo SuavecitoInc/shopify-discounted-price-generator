@@ -36,6 +36,11 @@ function run() {
     JSON.stringify(discountedVariants, null, 2),
   );
 
+  fs.writeFileSync(
+    path.join(__dirname, '../output/discounts-min.json'),
+    JSON.stringify(discountedVariants),
+  );
+
   console.log(
     'Discounts payload generated successfully to output/discounts.json.',
   );
