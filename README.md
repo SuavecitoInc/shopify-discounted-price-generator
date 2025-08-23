@@ -1,10 +1,12 @@
-# Shopify Discount Pricing Generator
+# Shopify Discount Swap Pricing Generator
 
 > A tool to generate discounted prices for Shopify products based on a config. This does not create or manage any discounts in Shopify.
 
-This tool can be used to generate discounted prices that can then be used to display the discounted pricing on the storefront via dom manipulation during a sale.
+Why this tool is necessary?
 
-Use case: we create automatic discounts in Shopify and want the prices to display the discounted pricing.
+Discounts created by our Functions app do not get settings for applies to collections, products, or variants. This means that when you query a discount node created by the Functions app, it will not return any collections, products, or variants that the discount applies to. The Functions app uses a json config, saved to a discount metafield, to determine the applicable line item discounts at runtime.
+
+This tool allows us to generate the discounted prices for products and variants based on a config, similar to the one used by the Functions app, so that we can display the discounted prices on the storefront.
 
 ## Setup
 
