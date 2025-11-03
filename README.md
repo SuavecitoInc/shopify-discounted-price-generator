@@ -1,185 +1,217 @@
 # Shopify Discount Swap Pricing Generator
 
-> A tool to generate discounted prices for Shopify products based on a config. This does not create or manage any discounts in Shopify.
+> A tool to generate discounted prices for Shopify products based on configuration. This does not create or manage discounts in Shopify itself.
 
-Why this tool is necessary?
+## Table of Contents
 
-Discounts created by our Functions app do not get settings for applies to collections, products, or variants. This means that when you query a discount node created by the Functions app, it will not return any collections, products, or variants that the discount applies to. The Functions app uses a json config, saved to a discount metafield, to determine the applicable line item discounts at runtime.
+- [Why This Tool Exists](#why-this-tool-exists)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
 
-This tool allows us to generate the discounted prices for products and variants based on a config, similar to the one used by the Functions app, so that we can display the discounted prices on the storefront.
+## Why This Tool Exists
+
+Discounts created by our Functions app lack settings for collections, products, or variants. When querying a discount node created by the Functions app, it won't return the collections, products, or variants the discount applies to.
+
+The Functions app uses a JSON config saved to a discount metafield to determine applicable line item discounts at runtime. This tool generates the discounted prices for products and variants based on a similar config, allowing us to display accurate discounted prices on the storefront.
+
+## Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Shopify Admin API access token with appropriate permissions
 
 ## Setup
+
+1. **Install dependencies:**
+
+```bash
+npm install
+```
+
+2. **Create environment file:**
+
+Create a `.env` file in the project root:
 
 ```bash
 SHOPIFY_ADMIN_API_VERSION=2025-07
 SHOPIFY_STORE=suavecito
-SHOPIFY_ACCESS_TOKEN=
+SHOPIFY_ACCESS_TOKEN=your_access_token_here
 ```
 
-Generate Types
+3. **Generate types:**
 
 ```bash
 npm run type-gen
 ```
 
-Create or Update Config:
+## Configuration
 
-The config file is located at `src/config.ts`. Below is an example configuration. Any variant with the metafield `suavecito_function.excluded_from_all_discounts` will be excluded from all discounts regardless of the config.
+The config file is located at `src/config.ts`.
+
+### Configuration Schema
+
+- `discounts`: Array of discount configurations
+  - `code`: Unique discount code identifier
+  - `percentage`: Discount percentage (0-100)
+  - `appliesTo`: Either `"specific_collections"` or `"all"`
+  - `collections`: (Optional) Array of collection handles when using `specific_collections`
+  - `excludedProductTypes`: (Optional) Array of product types to exclude
+  - `excludedBrands`: (Optional) Array of brand names to exclude
+
+### Important Notes
+
+- Any variant with the metafield `suavecito_function.excluded_from_all_discounts` will be excluded from **all** discounts regardless of the config
+- Discount codes should be unique across all configurations
+- Percentage values should be whole numbers (e.g., 30 for 30%)
+
+### Example Configuration
 
 ```typescript
-{
-  "discounts": [
+const config: Config = {
+  discounts: [
     {
-      "code": "COLLECTIBLES_30_OFF", // discount code
-      "percentage": 30,
-      "appliesTo": "specific_collections", // specific_collections or all
-      "collections": [
-        "collectibles"
-      ],
-      "excludedProductTypes": [
-        "Clearance",
-        "FGWP",
-        "Insurance"
-      ],
-      "excludedBrands": [
-        "Gunthers",
-        "Tres Noir"
-      ],
+      code: '30% OFF',
+      percentage: 30,
+      appliesTo: 'all',
+      excludedProductTypes: ['Clearance', 'FGWP', 'Insurance'],
+      excludedBrands: ['Tres Noir'],
     },
-    {
-      "code": "ALL_20_OFF", // discount code
-      "percentage": 20,
-      "appliesTo": "all", // specific_collections or all
-      "excludedProductTypes": [
-        "Clearance",
-        "FGWP",
-        "Insurance"
-      ],
-      "excludedBrands": [
-        "Gunthers",
-        "Tres Noir"
-      ],
-    }
-  ]
-}
+    // {
+    //   code: 'LABOR_DAY_25_OFF',
+    //   percentage: 25,
+    //   appliesTo: 'specific_collections',
+    //   collections: ['labor-day-sale'],
+    //   excludedProductTypes: ['Clearance', 'FGWP', 'Insurance'],
+    //   excludedBrands: ['Tres Noir'],
+    // }
+  ],
+};
 ```
 
-## Run
+## Usage
 
-### Generate discounted prices
+### Generate Discounted Prices
+
+Generates a detailed list of all discounted prices based on your configuration:
 
 ```bash
 npm run discounts
 
-> shopify-discounted-price-generator@0.0.1 discounts
-> tsx src/generate.ts
+═══════════════════════════════════════════════
+Starting Discount Generation
+═══════════════════════════════════════════════
 
------------------------------------------------
-Loading Config
+Configuration:
 {
-  "excludedProductTypes": [
-    "Clearance",
-    "FGWP",
-    "Insurance"
-  ],
-  "excludedBrands": [
-    "Gunthers",
-    "Tres Noir"
-  ],
   "discounts": [
     {
-      "code": "COLLECTIBLES_30_OFF",
+      "code": "30% OFF",
       "percentage": 30,
-      "appliesTo": "specific_collections",
-      "collections": [
-        "collectibles"
+      "appliesTo": "all",
+      "excludedProductTypes": [
+        "Clearance",
+        "FGWP",
+        "Insurance"
+      ],
+      "excludedBrands": [
+        "Tres Noir"
       ]
-    },
-    {
-      "code": "ALL_20_OFF",
-      "percentage": 20,
-      "appliesTo": "all"
     }
   ]
 }
-Collection Discounts to generate: [
-  {
-    code: 'COLLECTIBLES_30_OFF',
-    percentage: 30,
-    appliesTo: 'specific_collections',
-    collections: [ 'collectibles' ]
-  }
-]
-Fetching products for collection: collectibles
-Generating collection discount: COLLECTIBLES_30_OFF
-Fetching products for collection: collectibles
-Fetching next collection page eyJsYXN0X2lkIjo0NDA4ODAzMDMzMTcxLCJsYXN0X3ZhbHVlIjoiNDQwODgwMzAzMzE3MSJ9
-Finished generating collection discount: COLLECTIBLES_30_OFF
-Finished generating collection discounts 435
-Product Discounts to generate: [ { code: 'ALL_20_OFF', percentage: 20, appliesTo: 'all' } ]
-Generating product discount: ALL_20_OFF
-Fetching next page eyJsYXN0X2lkIjo0OTAyMTQwMjI4LCJsYXN0X3ZhbHVlIjoiNDkwMjE0MDIyOCJ9
-Fetching next page eyJsYXN0X2lkIjoxMTczMzk2MjYzOSwibGFzdF92YWx1ZSI6IjExNzMzOTYyNjM5In0=
-Fetching next page eyJsYXN0X2lkIjoxMzQ2MDY4OTcxNjAzLCJsYXN0X3ZhbHVlIjoiMTM0NjA2ODk3MTYwMyJ9
-Fetching next page eyJsYXN0X2lkIjozOTQ4MjQyNzYzODU5LCJsYXN0X3ZhbHVlIjoiMzk0ODI0Mjc2Mzg1OSJ9
-Fetching next page eyJsYXN0X2lkIjo0NDA4ODA1Mjk0MTYzLCJsYXN0X3ZhbHVlIjoiNDQwODgwNTI5NDE2MyJ9
-Fetching next page eyJsYXN0X2lkIjo2NTUzNDg0Njg5NDkxLCJsYXN0X3ZhbHVlIjoiNjU1MzQ4NDY4OTQ5MSJ9
-Fetching next page eyJsYXN0X2lkIjo2ODE4NjI4NjMyNjU5LCJsYXN0X3ZhbHVlIjoiNjgxODYyODYzMjY1OSJ9
-Fetching next page eyJsYXN0X2lkIjo3MTIyNDE1MTI0NTYzLCJsYXN0X3ZhbHVlIjoiNzEyMjQxNTEyNDU2MyJ9
-Fetching next page eyJsYXN0X2lkIjo3NTA5MTcxNzk4MDk5LCJsYXN0X3ZhbHVlIjoiNzUwOTE3MTc5ODA5OSJ9
-Finished generating product discount: ALL_20_OFF
-Finished generating product discounts 6595
+
+No collection discounts to process
+
+Processing 1 product discount(s)...
+
+Generating product discount: 30% OFF
+Fetching next page... (cursor: eyJsYXN0X2lkIjo0OTAyMTQwMjI4LCJsYXN0X3ZhbHVlIjoiNDkwMjE0MDIyOCJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjoxMTczMzk2MjYzOSwibGFzdF92YWx1ZSI6IjExNzMzOTYyNjM5In0=)
+Fetching next page... (cursor: eyJsYXN0X2lkIjoxMzQ2MDY4OTcxNjAzLCJsYXN0X3ZhbHVlIjoiMTM0NjA2ODk3MTYwMyJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjozOTQ4MjQyNzYzODU5LCJsYXN0X3ZhbHVlIjoiMzk0ODI0Mjc2Mzg1OSJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjo0NDA4ODA1Mjk0MTYzLCJsYXN0X3ZhbHVlIjoiNDQwODgwNTI5NDE2MyJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjo2NTUzNDg0Njg5NDkxLCJsYXN0X3ZhbHVlIjoiNjU1MzQ4NDY4OTQ5MSJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjo2ODE4NjI4NjMyNjU5LCJsYXN0X3ZhbHVlIjoiNjgxODYyODYzMjY1OSJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjo3MTIyNDE1MTI0NTYzLCJsYXN0X3ZhbHVlIjoiNzEyMjQxNTEyNDU2MyJ9)
+Fetching next page... (cursor: eyJsYXN0X2lkIjo3NTA5MTcxNzk4MDk5LCJsYXN0X3ZhbHVlIjoiNzUwOTE3MTc5ODA5OSJ9)
+  ✓ Completed product discount: 30% OFF
+
+Wrote 6506 items to product-discounts.json
+  Store-wide discounted variants
+
+═══════════════════════════════════════════════
+Discount generation complete!
+═══════════════════════════════════════════════
+Summary:
+   Collection variants: 0
+   Product variants: 6506
+   Total variants: 6506
+═══════════════════════════════════════════════
 ```
 
-Example Output:
+**Output:** `output/discounted-prices.json`
 
-```json
-[
-  {
-    "type": "Collectibles",
-    "brand": "Suavecito",
-    "productId": "gid://shopify/Product/170468682",
-    "productTitle": "Switchblade Comb",
-    "variantId": "gid://shopify/ProductVariant/391335624",
-    "sku": "C002BN",
-    "price": "7.99",
-    "compareAtPrice": null,
-    "discountedPrice": 5.59,
-    "code": "COLLECTIBLES_30_OFF"
-  },
-  {
-    "type": "Men's Grooming",
-    "brand": "Suavecito",
-    "productId": "gid://shopify/Product/161353365",
-    "productTitle": "Original Hold Pomade",
-    "variantId": "gid://shopify/ProductVariant/39685767561299",
-    "sku": "P001NN",
-    "price": "14.99",
-    "compareAtPrice": null,
-    "discountedPrice": 11.99,
-    "code": "ALL_20_OFF"
-  }
-]
-```
+### Generate Discounts Payload
 
-### Generate discounts payload
+Generates a simplified SKU-to-discount mapping for frontend consumption:
 
 ```bash
 npm run payload
 
-> shopify-discounted-price-generator@0.0.1 payload
-> tsx src/payload.ts
+═══════════════════════════════════════════════
+Generating Discounts Payload
+═══════════════════════════════════════════════
 
-Discounts payload generated successfully to output/discounts.json.
+ Reading discount files...
+ Processing output/collection-discounts.json: 0 variants
+ Processing output/product-discounts.json: 6506 variants
+Duplicate SKU "M690NN" - overwriting with 30% OFF discount
+Duplicate SKU "M799NN" - overwriting with 30% OFF discount
+Duplicate SKU "M798NN" - overwriting with 30% OFF discount
+Duplicate SKU "M926NN" - overwriting with 30% OFF discount
+Duplicate SKU "C163NN" - overwriting with 30% OFF discount
+
+ Processed 6506 total variants from 2 files
+
+ Writing output files...
+  ✓ output/discounts.json (6501 variants)
+  ✓ output/discounts-min.json (minified)
+  ✓ output/discount-skus.json (6501 SKUs)
+  ✓ output/discount-skus-min.json (minified)
+
+📏 File sizes:
+  output/discounts.json: 453.21 KB
+  output/discounts-min.json: 332.59 KB
+  output/discount-skus.json: 82.87 KB
+  output/discount-skus-min.json: 63.82 KB
+
+═══════════════════════════════════════════════
+Payload generation complete!
+═══════════════════════════════════════════════
+Summary:
+   Unique SKUs: 6501
+   Output files: 4
+═══════════════════════════════════════════════
 ```
 
-Example Output:
+**Output:** `output/discounts.json`
 
-```json
-{
-  "C002BN": { "discountedPrice": 5.59, "code": "COLLECTIBLES_30_OFF" },
-  "M029NN": { "discountedPrice": 3.49, "code": "COLLECTIBLES_30_OFF" },
-  "P001NN": { "discountedPrice": 11.99, "code": "ALL_20_OFF" },
-  "P009NN": { "discountedPrice": 32.79, "code": "ALL_20_OFF" }
-}
-```
+## Troubleshooting
+
+### Common Issues
+
+**Rate Limiting:**
+If you encounter rate limiting errors, the script will automatically retry with exponential backoff.
+
+**Missing Environment Variables:**
+Ensure all required environment variables are set in your `.env` file.
+
+**Type Generation Failures:**
+Run `npm run type-gen` after any Shopify API version updates.
+
+### Support
+
+For issues or questions, contact the development team.
