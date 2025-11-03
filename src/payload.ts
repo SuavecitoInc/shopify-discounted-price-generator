@@ -51,7 +51,7 @@ async function processDiscountFiles(): Promise<Discounted> {
   let totalVariants = 0;
   let skippedFiles = 0;
 
-  console.log('\n Reading discount files...');
+  console.log('\nReading discount files...');
 
   for (const file of INPUT_FILES) {
     const filePath = path.join(__dirname, '../', file);
@@ -62,7 +62,7 @@ async function processDiscountFiles(): Promise<Discounted> {
       continue;
     }
 
-    console.log(` Processing ${file}: ${variants.length} variants`);
+    console.log(`Processing ${file}: ${variants.length} variants`);
 
     variants.forEach((item) => {
       const { sku, discountedPrice, code } = item;
@@ -80,7 +80,7 @@ async function processDiscountFiles(): Promise<Discounted> {
   }
 
   console.log(
-    `\n Processed ${totalVariants} total variants from ${INPUT_FILES.length - skippedFiles} files`,
+    `\nProcessed ${totalVariants} total variants from ${INPUT_FILES.length - skippedFiles} files`,
   );
   if (skippedFiles > 0) {
     console.log(`Skipped ${skippedFiles} missing file(s)`);
@@ -91,7 +91,7 @@ async function processDiscountFiles(): Promise<Discounted> {
 
 // Write all output files
 async function writeOutputFiles(discountedVariants: Discounted): Promise<void> {
-  console.log('\n Writing output files...');
+  console.log('\nWriting output files...');
 
   const skus = Object.keys(discountedVariants);
 
@@ -106,7 +106,7 @@ async function writeOutputFiles(discountedVariants: Discounted): Promise<void> {
     false,
   );
   console.log(
-    `  ✓ ${OUTPUT_FILES.discounts} (${Object.keys(discountedVariants).length} variants)`,
+    `${OUTPUT_FILES.discounts} (${Object.keys(discountedVariants).length} variants)`,
   );
 
   await writeJsonFile(
@@ -114,7 +114,7 @@ async function writeOutputFiles(discountedVariants: Discounted): Promise<void> {
     discountedVariants,
     true,
   );
-  console.log(`  ✓ ${OUTPUT_FILES.discountsMin} (minified)`);
+  console.log(`${OUTPUT_FILES.discountsMin} (minified)`);
 
   // Write SKU files
   await writeJsonFile(
@@ -122,19 +122,19 @@ async function writeOutputFiles(discountedVariants: Discounted): Promise<void> {
     skus,
     false,
   );
-  console.log(`  ✓ ${OUTPUT_FILES.skus} (${skus.length} SKUs)`);
+  console.log(`${OUTPUT_FILES.skus} (${skus.length} SKUs)`);
 
   await writeJsonFile(
     path.join(__dirname, '../', OUTPUT_FILES.skusMin),
     skus,
     true,
   );
-  console.log(`  ✓ ${OUTPUT_FILES.skusMin} (minified)`);
+  console.log(`${OUTPUT_FILES.skusMin} (minified)`);
 }
 
 // Generate file size report
 async function generateSizeReport(): Promise<void> {
-  console.log('\n📏 File sizes:');
+  console.log('\nFile sizes:');
 
   for (const [key, file] of Object.entries(OUTPUT_FILES)) {
     const filePath = path.join(__dirname, '../', file);
@@ -178,7 +178,7 @@ async function run(): Promise<void> {
     console.log(`   Output files: ${Object.keys(OUTPUT_FILES).length}`);
     console.log('═══════════════════════════════════════════════\n');
   } catch (error) {
-    console.error('\n Error generating payload:', error);
+    console.error('\nError generating payload:', error);
     process.exit(1);
   }
 }

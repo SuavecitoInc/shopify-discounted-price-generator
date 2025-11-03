@@ -165,24 +165,24 @@ npm run payload
 Generating Discounts Payload
 ═══════════════════════════════════════════════
 
- Reading discount files...
- Processing output/collection-discounts.json: 0 variants
- Processing output/product-discounts.json: 6506 variants
+Reading discount files...
+Processing output/collection-discounts.json: 0 variants
+Processing output/product-discounts.json: 6506 variants
 Duplicate SKU "M690NN" - overwriting with 30% OFF discount
 Duplicate SKU "M799NN" - overwriting with 30% OFF discount
 Duplicate SKU "M798NN" - overwriting with 30% OFF discount
 Duplicate SKU "M926NN" - overwriting with 30% OFF discount
 Duplicate SKU "C163NN" - overwriting with 30% OFF discount
 
- Processed 6506 total variants from 2 files
+Processed 6506 total variants from 2 files
 
- Writing output files...
-  ✓ output/discounts.json (6501 variants)
-  ✓ output/discounts-min.json (minified)
-  ✓ output/discount-skus.json (6501 SKUs)
-  ✓ output/discount-skus-min.json (minified)
+Writing output files...
+output/discounts.json (6501 variants)
+output/discounts-min.json (minified)
+output/discount-skus.json (6501 SKUs)
+output/discount-skus-min.json (minified)
 
-📏 File sizes:
+File sizes:
   output/discounts.json: 453.21 KB
   output/discounts-min.json: 332.59 KB
   output/discount-skus.json: 82.87 KB
