@@ -222,7 +222,7 @@ async function generateProductDiscount(discount: Discount): Promise<void> {
   const { code } = discount;
   console.log(`\nGenerating product discount: ${code}`);
   await getProducts(discount);
-  console.log(`  ✓ Completed product discount: ${code}`);
+  console.log(`Completed product discount: ${code}`);
 }
 
 // Ensure output directory exists

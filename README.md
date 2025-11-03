@@ -137,7 +137,7 @@ Fetching next page... (cursor: eyJsYXN0X2lkIjo2NTUzNDg0Njg5NDkxLCJsYXN0X3ZhbHVlI
 Fetching next page... (cursor: eyJsYXN0X2lkIjo2ODE4NjI4NjMyNjU5LCJsYXN0X3ZhbHVlIjoiNjgxODYyODYzMjY1OSJ9)
 Fetching next page... (cursor: eyJsYXN0X2lkIjo3MTIyNDE1MTI0NTYzLCJsYXN0X3ZhbHVlIjoiNzEyMjQxNTEyNDU2MyJ9)
 Fetching next page... (cursor: eyJsYXN0X2lkIjo3NTA5MTcxNzk4MDk5LCJsYXN0X3ZhbHVlIjoiNzUwOTE3MTc5ODA5OSJ9)
-  ✓ Completed product discount: 30% OFF
+Completed product discount: 30% OFF
 
 Wrote 6506 items to product-discounts.json
   Store-wide discounted variants
