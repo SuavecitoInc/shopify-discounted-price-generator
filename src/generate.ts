@@ -1,8 +1,7 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { shopifyAuthenticatedFetch } from './lib/utils';
 import {
-  collection,
   collection as QueryCollection,
   products as QueryProducts,
 } from './lib/handlers';
@@ -13,237 +12,308 @@ import type {
 import type { Discount, DiscountedProductVariant } from './lib/types';
 import config from './config';
 
+// Storage for discounted variants
 const collectionVariants: DiscountedProductVariant[] = [];
+const productVariants: DiscountedProductVariant[] = [];
 
+// Retry wrapper for API calls with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1000,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    console.warn(`Retry attempt remaining: ${retries}. Waiting ${delay}ms...`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return withRetry(fn, retries - 1, delay * 2);
+  }
+}
+
+// Calculate discounted price with 2 decimal places
+function calculateDiscountedPrice(price: number, percentage: number): number {
+  const percent = percentage / 100;
+  return Math.round((price - price * percent) * 100) / 100;
+}
+
+// Check if product is excluded based on brand or product type
+function isProductExcluded(
+  vendor: string,
+  productType: string,
+  discount: Discount,
+): boolean {
+  return (
+    discount.excludedBrands.includes(vendor) ||
+    discount.excludedProductTypes.includes(productType)
+  );
+}
+
+// Check if variant is excluded from all discounts via metafield
+function isVariantExcluded(excludedFromDiscounts: any): boolean {
+  return excludedFromDiscounts?.value === 'true';
+}
+
+// Create a discounted variant object
+function createDiscountedVariant(
+  product: { id: string; title: string; productType: string; vendor: string },
+  variant: any,
+  discount: Discount,
+): DiscountedProductVariant {
+  return {
+    type: product.productType,
+    brand: product.vendor,
+    productId: product.id,
+    productTitle: product.title,
+    variantId: variant.id,
+    sku: variant.sku,
+    price: variant.price,
+    compareAtPrice: variant.compareAtPrice,
+    discountedPrice: calculateDiscountedPrice(
+      variant.price,
+      discount.percentage,
+    ),
+    code: discount.code,
+  };
+}
+
+// Fetch and process products from a specific collection
 async function getCollectionProducts(
   discount: Discount,
   handle: string,
   cursor: string | null = null,
-) {
-  const percent = discount.percentage / 100;
-  const response = await shopifyAuthenticatedFetch<CollectionByIdentifierQuery>(
-    QueryCollection,
-    { handle, cursor },
-  );
-
-  const productData = response.data.collectionByIdentifier.products;
-  const products = productData.edges;
-  const productsPageInfo = productData.pageInfo;
-  const { endCursor, hasNextPage } = productsPageInfo;
-
-  products.forEach((product) => {
-    const { id, title, productType, vendor, variants } = product.node;
-
-    const isExcludedByBrand = discount.excludedBrands.includes(vendor);
-
-    const isExcludedByProductType =
-      discount.excludedProductTypes.includes(productType);
-
-    if (isExcludedByBrand || isExcludedByProductType) {
-      return;
-    }
-
-    variants.edges.forEach((variant) => {
-      const {
-        id: variantId,
-        sku,
-        price,
-        compareAtPrice,
-        excludedFromDiscounts,
-      } = variant.node;
-
-      const isExcludedFromAllDiscounts =
-        excludedFromDiscounts && excludedFromDiscounts?.value === 'true';
-
-      if (!isExcludedFromAllDiscounts) {
-        collectionVariants.push({
-          type: productType,
-          brand: vendor,
-          productId: id,
-          productTitle: title,
-          variantId,
-          sku,
-          price,
-          compareAtPrice,
-          // round to 2 decimal places
-          discountedPrice: Math.round((price - price * percent) * 100) / 100,
-          code: discount.code,
-        });
-      }
-    });
-  });
-
-  if (hasNextPage) {
-    console.log('Fetching next collection page', endCursor);
-    await getCollectionProducts(discount, handle, endCursor);
-  }
-}
-
-async function generateCollectionDiscount(discount: Discount) {
-  const { code, collections, percentage } = discount;
-  console.log(`Generating collection discount: ${code}`);
-  // get products for each collection
-  if (collections) {
-    for (const collectionHandle of collections) {
-      console.log(`Fetching products for collection: ${collectionHandle}`);
-      await getCollectionProducts(discount, collectionHandle);
-    }
-  }
-  console.log(`Finished generating collection discount: ${code}`);
-}
-
-const productVariants: DiscountedProductVariant[] = [];
-
-async function getProducts(discount: Discount, cursor: string | null = null) {
-  const percent = discount.percentage / 100;
-  const response = await shopifyAuthenticatedFetch<ProductsQuery>(
-    QueryProducts,
-    { first: 250, after: cursor },
-  );
-  const products = response.data.products.edges;
-  const pageInfo = response.data.products.pageInfo;
-
-  const { endCursor, hasNextPage } = pageInfo;
-
-  products.forEach((product) => {
-    const { id, title, productType, vendor, variants, collections } =
-      product.node;
-    // check if product belongs to collection and collection discount exists in config
-    const hasCollectionDiscount = collections.edges.some((collection) =>
-      config.discounts.some(
-        (d) =>
-          d.appliesTo === 'specific_collections' &&
-          d.collections?.includes(collection.node.handle),
-      ),
+): Promise<void> {
+  try {
+    const response = await withRetry(() =>
+      shopifyAuthenticatedFetch<CollectionByIdentifierQuery>(QueryCollection, {
+        handle,
+        cursor,
+      }),
     );
 
-    const isExcludedByBrand = discount.excludedBrands.includes(vendor);
-
-    const isExcludedByProductType =
-      discount.excludedProductTypes.includes(productType);
-
-    if (hasCollectionDiscount || isExcludedByBrand || isExcludedByProductType) {
+    if (!response.data?.collectionByIdentifier) {
+      console.warn(`Collection not found: ${handle}`);
       return;
     }
 
-    variants.edges.forEach((variant) => {
-      const {
-        id: variantId,
-        sku,
-        price,
-        compareAtPrice,
-        excludedFromDiscounts,
-      } = variant.node;
+    const productData = response.data.collectionByIdentifier.products;
+    const products = productData.edges;
 
-      const isExcludedFromAllDiscounts =
-        excludedFromDiscounts && excludedFromDiscounts?.value === 'true';
+    products.forEach((product) => {
+      const { id, title, productType, vendor, variants } = product.node;
 
-      if (!isExcludedFromAllDiscounts) {
-        productVariants.push({
-          type: productType,
-          brand: vendor,
-          productId: id,
-          productTitle: title,
-          variantId,
-          sku,
-          price,
-          compareAtPrice,
-          discountedPrice: Math.round((price - price * percent) * 100) / 100,
-          code: discount.code,
-        });
+      if (isProductExcluded(vendor, productType, discount)) {
+        return;
       }
-    });
-  });
 
-  if (hasNextPage) {
-    console.log('Fetching next page', endCursor);
-    await getProducts(discount, endCursor);
-  }
-}
+      variants.edges.forEach((variant) => {
+        if (isVariantExcluded(variant.node.excludedFromDiscounts)) {
+          return;
+        }
 
-async function generateProductDiscount(discount: Discount) {
-  const { code } = discount;
-  console.log(`Generating product discount: ${code}`);
-  // get products
-  await getProducts(discount);
-
-  console.log(`Finished generating product discount: ${code}`);
-}
-
-async function run() {
-  console.log('-----------------------------------------------');
-  console.log('Loading Config');
-  console.log(JSON.stringify(config, null, 2));
-  // find discounts with collections
-  const collectionDiscounts = config.discounts.filter(
-    (d) => d.appliesTo === 'specific_collections',
-  );
-
-  if (collectionDiscounts) {
-    console.log('Collection Discounts to generate:', collectionDiscounts);
-
-    const collectionPromises = collectionDiscounts.map((discount) => {
-      const { collections } = discount;
-      if (collections) {
-        return Promise.all(
-          collections.map((collectionHandle) => {
-            console.log(
-              `Fetching products for collection: ${collectionHandle}`,
-            );
-            return generateCollectionDiscount(discount);
-          }),
+        collectionVariants.push(
+          createDiscountedVariant(
+            { id, title, productType, vendor },
+            variant.node,
+            discount,
+          ),
         );
-      }
+      });
     });
 
-    await Promise.all(collectionPromises);
-
-    console.log(
-      `Finished generating collection discounts`,
-      collectionVariants.length,
-    );
-
-    if (collectionVariants) {
-      // write collectionVariants to file
-      fs.writeFileSync(
-        path.join(__dirname, '../output/collection-discounts.json'),
-        JSON.stringify(collectionVariants, null, 2),
-      );
+    if (productData.pageInfo.hasNextPage) {
       console.log(
-        'Finished writing collection variants to file: output/collection-discounts.json',
+        `Fetching next page... (cursor: ${productData.pageInfo.endCursor})`,
+      );
+      await getCollectionProducts(
+        discount,
+        handle,
+        productData.pageInfo.endCursor,
       );
     }
+  } catch (error) {
+    console.error(`Error processing collection ${handle}:`, error);
+    throw error;
+  }
+}
+
+// Generate discounts for a specific collection
+async function generateCollectionDiscount(discount: Discount): Promise<void> {
+  const { code, collections } = discount;
+  console.log(`\nGenerating collection discount: ${code}`);
+
+  if (!collections || collections.length === 0) {
+    console.warn(`No collections specified for discount: ${code}`);
+    return;
   }
 
-  // find discounts with all
-  const productDiscounts = config.discounts.filter(
-    (d) => d.appliesTo === 'all',
-  );
+  for (const collectionHandle of collections) {
+    console.log(`Processing collection: ${collectionHandle}`);
+    await getCollectionProducts(discount, collectionHandle);
+  }
 
-  if (productDiscounts) {
-    console.log('Product Discounts to generate:', productDiscounts);
+  console.log(`Completed collection discount: ${code}`);
+}
 
-    const productPromises = productDiscounts.map((discount) => {
-      return generateProductDiscount(discount);
-    });
-
-    await Promise.all(productPromises);
-
-    console.log(
-      `Finished generating product discounts`,
-      productVariants.length,
+// Fetch and process all products (with exclusions)
+async function getProducts(
+  discount: Discount,
+  cursor: string | null = null,
+): Promise<void> {
+  try {
+    const response = await withRetry(() =>
+      shopifyAuthenticatedFetch<ProductsQuery>(QueryProducts, {
+        first: 250,
+        after: cursor,
+      }),
     );
 
-    if (productVariants) {
-      // write productVariants to file
-      fs.writeFileSync(
-        path.join(__dirname, '../output/product-discounts.json'),
-        JSON.stringify(productVariants, null, 2),
+    const products = response.data.products.edges;
+    const pageInfo = response.data.products.pageInfo;
+
+    products.forEach((product) => {
+      const { id, title, productType, vendor, variants, collections } =
+        product.node;
+
+      // Skip if product belongs to a collection with a specific discount
+      const hasCollectionDiscount = collections.edges.some((collection) =>
+        config.discounts.some(
+          (d) =>
+            d.appliesTo === 'specific_collections' &&
+            d.collections?.includes(collection.node.handle),
+        ),
       );
-      console.log(
-        'Finished writing product variants to file: output/product-discounts.json',
-      );
+
+      if (
+        hasCollectionDiscount ||
+        isProductExcluded(vendor, productType, discount)
+      ) {
+        return;
+      }
+
+      variants.edges.forEach((variant) => {
+        if (isVariantExcluded(variant.node.excludedFromDiscounts)) {
+          return;
+        }
+
+        productVariants.push(
+          createDiscountedVariant(
+            { id, title, productType, vendor },
+            variant.node,
+            discount,
+          ),
+        );
+      });
+    });
+
+    if (pageInfo.hasNextPage) {
+      console.log(`Fetching next page... (cursor: ${pageInfo.endCursor})`);
+      await getProducts(discount, pageInfo.endCursor);
     }
+  } catch (error) {
+    console.error(`Error fetching products:`, error);
+    throw error;
+  }
+}
+
+// Generate store-wide product discounts
+async function generateProductDiscount(discount: Discount): Promise<void> {
+  const { code } = discount;
+  console.log(`\nGenerating product discount: ${code}`);
+  await getProducts(discount);
+  console.log(`  ✓ Completed product discount: ${code}`);
+}
+
+// Ensure output directory exists
+async function ensureOutputDirectory(): Promise<void> {
+  const outputDir = path.join(__dirname, '../output');
+  await fs.mkdir(outputDir, { recursive: true });
+}
+
+// Write JSON data to file
+async function writeJsonFile(
+  filename: string,
+  data: any[],
+  description: string,
+): Promise<void> {
+  const filePath = path.join(__dirname, '../output', filename);
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+  console.log(`\nWrote ${data.length} items to ${filename}`);
+  console.log(`  ${description}`);
+}
+
+// Main execution function
+async function run(): Promise<void> {
+  try {
+    console.log('═══════════════════════════════════════════════');
+    console.log('Starting Discount Generation');
+    console.log('═══════════════════════════════════════════════');
+    console.log('\nConfiguration:');
+    console.log(JSON.stringify(config, null, 2));
+
+    await ensureOutputDirectory();
+
+    // Process collection-specific discounts
+    const collectionDiscounts = config.discounts.filter(
+      (d) => d.appliesTo === 'specific_collections',
+    );
+
+    if (collectionDiscounts.length > 0) {
+      console.log(
+        `\nProcessing ${collectionDiscounts.length} collection discount(s)...`,
+      );
+
+      for (const discount of collectionDiscounts) {
+        await generateCollectionDiscount(discount);
+      }
+
+      await writeJsonFile(
+        'collection-discounts.json',
+        collectionVariants,
+        'Collection-specific discounted variants',
+      );
+    } else {
+      console.log('\nNo collection discounts to process');
+    }
+
+    // Process store-wide product discounts
+    const productDiscounts = config.discounts.filter(
+      (d) => d.appliesTo === 'all',
+    );
+
+    if (productDiscounts.length > 0) {
+      console.log(
+        `\nProcessing ${productDiscounts.length} product discount(s)...`,
+      );
+
+      for (const discount of productDiscounts) {
+        await generateProductDiscount(discount);
+      }
+
+      await writeJsonFile(
+        'product-discounts.json',
+        productVariants,
+        'Store-wide discounted variants',
+      );
+    } else {
+      console.log('\nNo product discounts to process');
+    }
+
+    // Summary
+    console.log('\n═══════════════════════════════════════════════');
+    console.log('Discount generation complete!');
+    console.log('═══════════════════════════════════════════════');
+    console.log(`Summary:`);
+    console.log(`   Collection variants: ${collectionVariants.length}`);
+    console.log(`   Product variants: ${productVariants.length}`);
+    console.log(
+      `   Total variants: ${collectionVariants.length + productVariants.length}`,
+    );
+    console.log('═══════════════════════════════════════════════\n');
+  } catch (error) {
+    console.error('\nError generating discounts:', error);
+    process.exit(1);
   }
 }
 
