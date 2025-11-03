@@ -35,10 +35,21 @@ function run() {
     path.join(__dirname, '../output/discounts.json'),
     JSON.stringify(discountedVariants, null, 2),
   );
-
+  // write minified discount object to new file
   fs.writeFileSync(
     path.join(__dirname, '../output/discounts-min.json'),
     JSON.stringify(discountedVariants),
+  );
+  // write skus to new file
+  const skus = Object.keys(discountedVariants);
+  fs.writeFileSync(
+    path.join(__dirname, '../output/discount-skus.json'),
+    JSON.stringify(skus, null, 2),
+  );
+  // write minified skus to new file
+  fs.writeFileSync(
+    path.join(__dirname, '../output/discount-skus-min.json'),
+    JSON.stringify(skus),
   );
 
   console.log(
