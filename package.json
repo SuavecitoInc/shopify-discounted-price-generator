@@ -9,7 +9,7 @@
     "discounts": "tsx src/generate.ts",
     "payload": "tsx src/payload.ts",
     "type-gen": "graphql-codegen --config .graphqlrc.ts",
-    "clean:json": "rm -f ./output/*.json"
+    "clean": "rm -f ./output/*.json"
   },
   "author": "j-Riv <jriv@suavecito.com>",
   "license": "ISC",

@@ -3,19 +3,19 @@ import type { Config } from './lib/types';
 const config: Config = {
   discounts: [
     {
-      code: '30% OFF',
-      percentage: 30,
+      code: 'MEMORIAL26',
+      percentage: 20,
       appliesTo: 'all',
       excludedProductTypes: ['Clearance', 'FGWP', 'Insurance'],
       excludedBrands: ['Gunthers', 'Tres Noir'],
     },
     // {
-    //   code: 'LABOR_DAY_25_OFF',
-    //   percentage: 25,
+    //   code: 'TN 40% OFF',
+    //   percentage: 40,
     //   appliesTo: 'specific_collections',
-    //   collections: ['labor-day-sale'],
+    //   collections: ['tres-noir'],
     //   excludedProductTypes: ['Clearance', 'FGWP', 'Insurance'],
-    //   excludedBrands: ['Gunthers', 'Tres Noir'],
+    //   excludedBrands: ['Gunthers'],
     // },
     // {
     //   code: 'COLLECTIBLES_30_OFF',
