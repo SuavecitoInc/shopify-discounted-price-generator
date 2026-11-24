@@ -12,6 +12,9 @@ import type {
 import type { Discount, DiscountedProductVariant } from './lib/types';
 import config from './config';
 
+// Flag to determine whether to use the excluded metafield for variants
+const useVariantExcludedMetafield = false;
+
 // Storage for discounted variants
 const collectionVariants: DiscountedProductVariant[] = [];
 const productVariants: DiscountedProductVariant[] = [];
@@ -34,8 +37,16 @@ async function withRetry<T>(
 
 // Calculate discounted price with 2 decimal places
 function calculateDiscountedPrice(price: number, percentage: number): number {
+  // const percent = percentage / 100;
+  // return Math.round((price - price * percent) * 100) / 100;
   const percent = percentage / 100;
-  return Math.round((price - price * percent) * 100) / 100;
+  console.log('percent', percent);
+  const discount = price * percent;
+  console.log('discount', discount);
+  const discountedPrice = Math.floor(discount * 100) / 100;
+  console.log('discountedPrice', discountedPrice);
+
+  return Math.round((price - discountedPrice) * 100) / 100;
 }
 
 // Check if product is excluded based on brand or product type
@@ -52,6 +63,7 @@ function isProductExcluded(
 
 // Check if variant is excluded from all discounts via metafield
 function isVariantExcluded(excludedFromDiscounts: any): boolean {
+  if (!useVariantExcludedMetafield) return false;
   return excludedFromDiscounts?.value === 'true';
 }
 

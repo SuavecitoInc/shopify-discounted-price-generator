@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-export const API_VERSION = process.env.SHOPIFY_ADMMIN_API_VERSION || '2025-07';
+export const API_VERSION = process.env.SHOPIFY_ADMMIN_API_VERSION || '2026-10';
 
 export const STORE = process.env.SHOPIFY_STORE || 'suavecito';
 

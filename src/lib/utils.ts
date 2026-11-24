@@ -72,6 +72,8 @@ export async function shopifyAuthenticatedFetch<T>(
       body: JSON.stringify({ query, variables }),
     });
 
+    console.log('RESPONSE', JSON.stringify(response, null, 2));
+
     // Handle rate limiting (429)
     if (response.status === 429) {
       if (retries > 0) {

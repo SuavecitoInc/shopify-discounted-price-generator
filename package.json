@@ -7,6 +7,7 @@
     "lint": "eslint src/**/*.ts",
     "format": "eslint src/**/*.ts --fix",
     "discounts": "tsx src/generate.ts",
+    "variant-discounts": "tsx src/generate-variant-collection.ts",
     "payload": "tsx src/payload.ts",
     "type-gen": "graphql-codegen --config .graphqlrc.ts",
     "clean": "rm -f ./output/*.json"
